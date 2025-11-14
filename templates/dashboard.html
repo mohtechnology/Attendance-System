@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3>Today's Attendance Report ({{ today }})</h3>
+
+<table class="table table-bordered table-striped mt-3">
+    <thead class="table-dark">
+        <tr>
+            <th>S.No.</th>
+            <th>Branch</th>
+            <th>Year</th>
+            <th>Present Students</th>
+            <th>Absent Students</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cls in summary %}
+        <tr style="cursor:pointer;" onclick="window.location.href='{{ url_for('attendance_list', date=today, branch=cls.branch, year=cls.year) }}'">
+            <td>{{ loop.index }}</td>
+            <td>{{ cls.branch }}</td>
+            <td>{{ cls.year }}</td>
+            <td>{{ cls.present }}</td>
+            <td>{{ cls.absent }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

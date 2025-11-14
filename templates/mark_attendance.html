@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h4 class="card-title mb-0">Mark Attendance (Automatic)</h4>
+  </div>
+  <div class="card-body">
+    <p class="mb-4">Open camera below. Select the desired camera from dropdown. The system will detect and mark attendance automatically (once per day).</p>
+
+    <div class="mb-3">
+      <label class="form-label">Choose Camera</label>
+      <select id="cameraSelect" class="form-select"></select>
+    </div>
+    
+    <div class="row">
+      <div class="col-md-8">
+        <div class="video-container">
+          <video id="video" autoplay playsinline></video>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-header py-2">
+            <h6 class="mb-0">Recent Events</h6>
+          </div>
+          <div class="card-body p-0">
+            <div id="events" class="events-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const video = document.getElementById('video');
+const cameraSelect = document.getElementById('cameraSelect');
+const eventsEl = document.getElementById('events');
+
+let currentStream;
+let sendInterval = 1000; // ms between sends
+
+// enumerate devices and populate dropdown
+async function getCameras() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const videoDevices = devices.filter(d => d.kind === 'videoinput');
+  cameraSelect.innerHTML = '';
+  videoDevices.forEach((d, i) => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    opt.text = d.label || `Camera ${i+1}`;
+    cameraSelect.appendChild(opt);
+  });
+}
+
+// start stream with deviceId
+async function startStream(deviceId) {
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+  }
+  const constraints = {
+    video: {
+      deviceId: deviceId ? { exact: deviceId } : undefined,
+      width: { ideal: 640 },
+      height: { ideal: 480 }
+    },
+    audio: false
+  };
+  currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+  video.srcObject = currentStream;
+}
+
+// capture frame to base64 jpeg
+function captureFrameBase64() {
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.7);
+}
+
+// send frames periodically
+let sending = false;
+async function startSending() {
+  if (sending) return;
+  sending = true;
+  while (sending) {
+    try {
+      if (video.readyState === 4) {
+        const data = captureFrameBase64();
+        const resp = await fetch('{{ url_for("recognize") }}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: data })
+        });
+        const json = await resp.json();
+        if (json && json.status === 'ok' && json.found && json.results) {
+          json.results.forEach(r => {
+            let msg = '';
+            let className = 'list-group-item';
+            
+            if (r.marked) {
+              msg = `${r.name} (${r.roll}) - Present ✅`;
+              className += ' list-group-item-success';
+              const li = document.createElement('li');
+              li.className = className;
+              li.textContent = `${new Date().toLocaleTimeString()} - ${msg}`;
+              eventsEl.prepend(li);
+            }
+            
+          });
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      const li = document.createElement('li');
+      li.className = 'list-group-item list-group-item-danger';
+      li.textContent = `${new Date().toLocaleTimeString()} - Error sending frame`;
+      eventsEl.prepend(li);
+    }
+    await new Promise(r => setTimeout(r, sendInterval));
+  }
+}
+
+cameraSelect.addEventListener('change', async () => {
+  await startStream(cameraSelect.value);
+});
+
+// init
+(async () => {
+  await getCameras();
+  if (cameraSelect.options.length > 0) {
+    await startStream(cameraSelect.value);
+  } else {
+    // no label devices until user grants permission; ask for permission then re-enumerate
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: true });
+      await getCameras();
+      if (cameraSelect.options.length > 0) await startStream(cameraSelect.value);
+    } catch (e) {
+      alert('Camera access denied or not available.');
+    }
+  }
+  startSending();
+})();
+</script>
+{% endblock %}

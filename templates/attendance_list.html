@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card mb-4">
+  <div class="card-header">
+    <h4 class="card-title mb-0">Attendance for {{ date }} — {{ branch }} — {{ year }}</h4>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0">Present Students</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Roll No</th>
+                <th>Name</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in present_students %}
+              <tr>
+                <td><span class="badge bg-primary">{{ p.roll }}</span></td>
+                <td>{{ p.student_name }}</td>
+                <td><span class="badge bg-light text-dark">{{ p.time }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">Absent Students</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Roll No</th>
+                <th>Name</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in absent_students %}
+              <tr>
+                <td><span class="badge bg-secondary">{{ a.roll }}</span></td>
+                <td>{{ a.name }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-4">
+  <div class="card">
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-4">
+          <h3 class="text-primary">{{ present_students|length }}</h3>
+          <p class="mb-0">Present</p>
+        </div>
+        <div class="col-md-4">
+          <h3 class="text-danger">{{ absent_students|length }}</h3>
+          <p class="mb-0">Absent</p>
+        </div>
+        <div class="col-md-4">
+          <h3 class="text-info">{{ present_students|length + absent_students|length }}</h3>
+          <p class="mb-0">Total</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
